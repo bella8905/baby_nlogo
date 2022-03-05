@@ -1,7 +1,11 @@
 breed [A_citizens A_citizen]
 breed [B_citizens B_citizen]
 
-turtles-own[groupism resource investment]
+turtles-own[
+  groupism
+  resource
+  investment
+]
 globals [
   ;
   A_resource A_strength
@@ -59,19 +63,38 @@ to setup
 end
 
 to go
-  conflict_roll_dice
-  conflict_update
+  if check_stop [
+    stop
+  ]
 
-  citizens_reproduce
+  if enable_conflict [
+    conflict_roll_dice
+    conflict_update
+  ]
+
+  if enable_reproduce [
+    citizens_reproduce
+  ]
   citizens_update
   citizens_move
   citizens_interact
-  citizens_reproduce
 
   border_color
   ; show ticks
 
   tick
+end
+
+to-report check_stop
+  if count A_citizens = 0 [
+    print (word "day " ticks ": simulation stops because A_citizens are all killed" )
+    report true
+  ]
+  if count B_citizens = 0 [
+    print (word "day " ticks ": simulation stops because B_citizens are all killed" )
+    report true
+  ]
+  report false
 end
 
 to citizens_color
@@ -222,19 +245,33 @@ to conflict
   ]
 
   ; remove citizens based on A_d and B_d
+  citizens_random_kill A_citizens A_d
+  citizens_random_kill B_citizens B_d
 
 end
 
 to citizens_reproduce
+  let A_new_baby_count 0
+  let B_new_baby_count 0
   ask turtles with [resource > 50] [
     set resource resource * 0.5
     let resource_kid resource
     hatch 1 [
       ; resource = resource_parent, this is true after parent's resource reduces into half
       set groupism random-float 1
-      print (word "day " ticks ": new baby is born! " )
+      ifelse breed = A_citizens [
+        set A_new_baby_count A_new_baby_count + 1
+      ] [
+        set B_new_baby_count B_new_baby_count + 1
+      ]
     ]
+  ]
 
+  if A_new_baby_count > 0 [
+    print (word "day " ticks ": " A_new_baby_count " new A babies are born! " )
+  ]
+  if B_new_baby_count > 0 [
+    print (word "day " ticks ": " B_new_baby_count " new B babies are born! " )
   ]
 end
 
@@ -251,6 +288,50 @@ to conflict_update
   if member? ticks conflict_calendar [
     ; show ticks
     conflict
+  ]
+end
+
+; https://jonlabelle.com/snippets/view/csharp/pick-random-elements-based-on-probability
+to-report citizens_random_kill_one_by_groupism [citizens]
+  let citizen_killed false
+  ifelse count citizens > 0 [
+    let groupism_total sum [groupism] of citizens
+    let dice_roll random-float 1
+    let groupism_normalized_cumulative 0
+    let stop_loop false     ; stop doesn't do the trick in ask as I tried it..
+    ask citizens [
+      if stop_loop = false [
+        let groupism_normalized groupism / groupism_total
+        set groupism_normalized_cumulative groupism_normalized_cumulative + groupism_normalized
+        if groupism_normalized_cumulative > dice_roll [
+          ; print (word "day " ticks ": killed a " breed " with groupism " groupism ",at " dice_roll )
+          set stop_loop true
+          set citizen_killed true
+          die
+        ]
+      ]
+    ]
+  ] [
+    print (word "day " ticks ":all citizens have been killed" )
+  ]
+
+  report citizen_killed
+end
+
+to citizens_random_kill [citizens num_to_kill]
+  let num_killed 0
+  let citizen_type [breed] of one-of citizens
+
+  while [num_to_kill > 0] [
+    let killed citizens_random_kill_one_by_groupism citizens
+    if killed = true [
+      set num_killed num_killed + 1
+    ]
+    set num_to_kill num_to_kill - 1
+  ]
+
+  if num_killed > 0 [
+    print (word "day " ticks ": " num_killed " " citizen_type " have been killed" )
   ]
 end
 
@@ -364,7 +445,7 @@ A_number_citizens
 A_number_citizens
 0
 500
-100.0
+111.0
 1
 1
 NIL
@@ -386,10 +467,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-747
-61
-832
-106
+718
+18
+803
+63
 A_resource
 A_resource
 2
@@ -397,10 +478,10 @@ A_resource
 11
 
 MONITOR
-751
-181
-839
-226
+720
+95
+808
+140
 B_resource
 B_resource
 2
@@ -408,10 +489,10 @@ B_resource
 11
 
 MONITOR
-865
-61
-954
-106
+836
+18
+925
+63
 A_groupism
 mean [groupism] of A_citizens
 2
@@ -419,32 +500,21 @@ mean [groupism] of A_citizens
 11
 
 MONITOR
-870
-182
-957
-227
+839
+96
+926
+141
 B_groupism
 mean [groupism] of B_citizens
 2
 1
 11
 
-MONITOR
-760
-284
-891
-329
-days_after_conflict
-days_after_conflict
-17
-1
-11
-
 BUTTON
-426
-495
-506
-528
+425
+484
+505
+517
 NIL
 Conflict
 NIL
@@ -457,33 +527,11 @@ NIL
 NIL
 1
 
-MONITOR
-766
-431
-905
-476
-NIL
-border_target_color
-17
-1
-11
-
-MONITOR
-952
-461
-1081
-506
-NIL
-border_prev_color
-17
-1
-11
-
 SLIDER
-59
-405
-259
-438
+921
+316
+1121
+349
 conflict_count_per_cycle
 conflict_count_per_cycle
 0
@@ -495,10 +543,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-1045
-353
-1164
-398
+722
+382
+841
+427
 NIL
 conflict_calendar
 17
@@ -506,10 +554,10 @@ conflict_calendar
 11
 
 SLIDER
-1096
-205
-1268
-238
+722
+316
+894
+349
 b
 b
 0
@@ -519,6 +567,28 @@ b
 1
 NIL
 HORIZONTAL
+
+SWITCH
+720
+195
+870
+228
+enable_conflict
+enable_conflict
+0
+1
+-1000
+
+SWITCH
+721
+250
+890
+283
+enable_reproduce
+enable_reproduce
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
