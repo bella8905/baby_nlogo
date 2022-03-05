@@ -3,24 +3,31 @@ breed [B_citizens B_citizen]
 
 turtles-own[groupism resource investment]
 globals [
+  ;
   A_resource A_strength
   B_resource B_strength
-  conflict_today days_after_conflict
+
+  ; conflict
+  conflict_today days_after_conflict conflict_calendar
+
+  ; border
   border_target_color border_prev_color border_color_flipped_days_passed border_color_flipped_times
 ]
 
 ; constants
 to-report stride report 1 end  ; stride length
-to-report border_color_tweening_days report 5 end
-to-report border_color_flipped_times_total report 3 end
+to-report border_color_tweening_days report 2 end
+to-report border_color_flipped_times_total report 2 end
 to-report border_color_conflict report [255 0 0] end
 to-report border_color_neutral report [255 255 0] end
+to-report conflict_cycle report 50 end
 
 to setup
   clear-all
 
   set conflict_today false
   set days_after_conflict -1
+  set conflict_calendar []
   set border_target_color border_color_neutral
   set border_prev_color border_target_color
   set border_color_flipped_days_passed -1
@@ -52,9 +59,14 @@ to setup
 end
 
 to go
+  conflict_roll_dice
+  conflict_update
+
+  citizens_reproduce
   citizens_update
   citizens_move
   citizens_interact
+  citizens_reproduce
 
   border_color
   ; show ticks
@@ -174,6 +186,72 @@ to conflict
   set border_target_color border_color_conflict
   set border_color_flipped_days_passed 0
   set border_color_flipped_times 0
+
+  set A_strength 0.01 * (sum [resource] of A_citizens) + 0.1 * A_resource
+  set B_strength 0.01 * (sum [resource] of B_citizens) + 0.1 * B_resource
+  let A_d 0
+  let B_d 0
+  ifelse A_strength > B_strength [
+    let r A_strength / B_strength
+    ifelse r < 1.25 [
+      set A_d 0.75 * count A_citizens
+      set B_d 0.15 * count B_citizens
+    ] [
+      ifelse r >= 2 [
+        set B_d 0.5 * count B_citizens
+      ] [
+        set A_d 0.05 * count A_citizens
+        set B_d 0.25 * count B_citizens
+      ]
+    ]
+  ] [
+    if A_strength < B_strength [
+      let r B_strength / A_strength
+      ifelse r < 1.25 [
+        set B_d 0.75 * count B_citizens
+        set A_d 0.15 * count A_citizens
+      ] [
+        ifelse r >= 2 [
+          set A_d 0.5 * count A_citizens
+        ] [
+          set B_d 0.05 * count B_citizens
+          set A_d 0.25 * count A_citizens
+        ]
+      ]
+    ]
+  ]
+
+  ; remove citizens based on A_d and B_d
+
+end
+
+to citizens_reproduce
+  ask turtles with [resource > 50] [
+    set resource resource * 0.5
+    let resource_kid resource
+    hatch 1 [
+      ; resource = resource_parent, this is true after parent's resource reduces into half
+      set groupism random-float 1
+      print (word "day " ticks ": new baby is born! " )
+    ]
+
+  ]
+end
+
+; create conflict_calendar with randomly picked days
+to conflict_roll_dice
+  if ticks mod conflict_cycle = 0 [
+    set conflict_calendar n-values conflict_count_per_cycle [(random conflict_cycle) + ticks]
+
+    print (word "day " ticks ": refresh conflict calendar: " conflict_calendar )
+  ]
+end
+
+to conflict_update
+  if member? ticks conflict_calendar [
+    ; show ticks
+    conflict
+  ]
 end
 
 ; utility functions
@@ -182,10 +260,9 @@ end
 ; a: start
 ; b: end
 ; s: step
-to-report lerp [a b s]
-  report a + ( b - a ) * s
+to-report lerp [a0 a1 s]
+  report a0 + ( a1 - a0 ) * s
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -401,6 +478,47 @@ border_prev_color
 17
 1
 11
+
+SLIDER
+59
+405
+259
+438
+conflict_count_per_cycle
+conflict_count_per_cycle
+0
+10
+2.0
+1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+1045
+353
+1164
+398
+NIL
+conflict_calendar
+17
+1
+11
+
+SLIDER
+1096
+205
+1268
+238
+b
+b
+0
+1
+0.17
+0.01
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
