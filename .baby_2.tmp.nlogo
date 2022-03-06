@@ -167,15 +167,14 @@ to citizens_update
   ]
   set A_resource A_resource_tmp
 
-  let B_resource_tmp 0
+  let B_
+  set B_resource 0
   ask B_citizens [
     set resource resource + 0.5
     set investment resource * ( lerp 0 0.2 groupism )
     set resource_private resource - investment
-    set B_resource_tmp B_resource_tmp + investment
+    set B_resource B_resource + investment
   ]
-  set B_resource B_resource_tmp
-
 end
 
 to citizens_move
