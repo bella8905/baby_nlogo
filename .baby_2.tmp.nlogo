@@ -160,15 +160,15 @@ to citizens_update
   ; update resource
   set A_resource 0
   ask A_citizens [
-    set resource resource + 5 * ( 1 - groupism )
-    set investment 5 * groupism
+    set resource resource +  ( 1 - groupism )
+    set investment groupism
     set A_resource A_resource + investment
   ]
 
   set B_resource 0
   ask B_citizens [
-    set resource resource + 5 * ( 1 - groupism )
-    set investment 5 * groupism
+    set resource resource + ( 1 - groupism )
+    set investment groupism
     set B_resource B_resource + investment
   ]
 end
@@ -227,8 +227,8 @@ to conflict
   ifelse A_strength > B_strength [
     let r A_strength / B_strength
     ifelse r < 1.25 [
-      set A_d 0.75 * count A_citizens
-      set B_d 0.15 * count B_citizens
+      set A_d 0.45 * count A_citizens
+      set B_d 0.1 * count B_citizens
     ] [
       ifelse r >= 2 [
         set B_d 0.5 * count B_citizens
@@ -241,8 +241,8 @@ to conflict
     if A_strength < B_strength [
       let r B_strength / A_strength
       ifelse r < 1.25 [
-        set B_d 0.75 * count B_citizens
-        set A_d 0.15 * count A_citizens
+        set B_d 0.45 * count B_citizens
+        set A_d 0.1 * count A_citizens
       ] [
         ifelse r >= 2 [
           set A_d 0.5 * count A_citizens
@@ -304,16 +304,46 @@ to conflict_update
 end
 
 ; https://jonlabelle.com/snippets/view/csharp/pick-random-elements-based-on-probability
+; to-report citizens_random_kill_one_by_groupism [citizens]
+;  let citizen_killed false
+;  ifelse count citizens > 0 [
+;    let groupism_total sum [groupism] of citizens
+;    let dice_roll random-float 1
+;    let groupism_normalized_cumulative 0
+;    let stop_loop false     ; stop doesn't do the trick in ask as I tried it..
+;    ask citizens [
+;      if stop_loop = false [
+;        let groupism_normalized groupism / groupism_total
+;        set groupism_normalized_cumulative groupism_normalized_cumulative + groupism_normalized
+;        if groupism_normalized_cumulative > dice_roll [
+;          ; print (word "day " ticks ": killed a " breed " with groupism " groupism ",at " dice_roll )
+;          set stop_loop true
+;          set citizen_killed true
+;          die
+;        ]
+;      ]
+;    ]
+;  ] [
+;    print (word "day " ticks ":all citizens have been killed" )
+;  ]
+;
+;  report citizen_killed
+; end
+
 to-report citizens_random_kill_one_by_groupism [citizens]
   let citizen_killed false
   ifelse count citizens > 0 [
-    let groupism_total sum [groupism] of citizens
+    let groupism_inv_total 0
+    ask citizens [
+      set groupism_inv_total groupism_inv_total + ( 1.0 - groupism )
+    ]
+
     let dice_roll random-float 1
-    let groupism_normalized_cumulative 0
+    let groupism_ive_normalized_cumulative 0
     let stop_loop false     ; stop doesn't do the trick in ask as I tried it..
     ask citizens [
       if stop_loop = false [
-        let groupism_normalized groupism / groupism_total
+        let groupism_inormalized groupism / groupism_total
         set groupism_normalized_cumulative groupism_normalized_cumulative + groupism_normalized
         if groupism_normalized_cumulative > dice_roll [
           ; print (word "day " ticks ": killed a " breed " with groupism " groupism ",at " dice_roll )
@@ -329,6 +359,8 @@ to-report citizens_random_kill_one_by_groupism [citizens]
 
   report citizen_killed
 end
+
+
 
 to citizens_random_kill [citizens num_to_kill]
   let num_killed 0
@@ -363,13 +395,13 @@ to-report lerp [a0 a1 s]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-647
-448
+285
+28
+757
+501
 -1
 -1
-13.0
+14.061
 1
 10
 1
@@ -390,10 +422,10 @@ ticks
 30.0
 
 BUTTON
-210
-484
-276
-517
+289
+514
+355
+547
 NIL
 Setup
 NIL
@@ -407,10 +439,10 @@ NIL
 1
 
 BUTTON
-304
-485
-367
-518
+383
+515
+446
+548
 NIL
 Go
 T
@@ -424,25 +456,25 @@ NIL
 1
 
 SLIDER
-16
-36
-188
-69
+47
+88
+248
+121
 A_tough_loose
 A_tough_loose
 0
 1
-0.5
+0.31
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-20
-275
-192
-308
+52
+287
+253
+320
 B_tough_loose
 B_tough_loose
 0
@@ -454,40 +486,40 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-87
-188
-120
+48
+49
+248
+82
 A_number_citizens
 A_number_citizens
 0
 500
-101.0
+350.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-22
-333
-194
-366
+52
+324
+254
+357
 B_number_citizens
 B_number_citizens
 0
 500
-100.0
+350.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-718
-18
-803
-63
+66
+186
+144
+231
 A_resource
 A_resource
 2
@@ -495,10 +527,10 @@ A_resource
 11
 
 MONITOR
-720
-95
-808
-140
+67
+425
+147
+470
 B_resource
 B_resource
 2
@@ -506,10 +538,10 @@ B_resource
 11
 
 MONITOR
-836
-18
-925
-63
+155
+186
+235
+231
 A_groupism
 mean [groupism] of A_citizens
 2
@@ -517,38 +549,21 @@ mean [groupism] of A_citizens
 11
 
 MONITOR
-839
-96
-926
-141
+156
+426
+235
+471
 B_groupism
 mean [groupism] of B_citizens
 2
 1
 11
 
-BUTTON
-425
-484
-505
-517
-NIL
-Conflict
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 SLIDER
-921
-316
-1121
-349
+777
+129
+930
+162
 conflict_count_per_cycle
 conflict_count_per_cycle
 0
@@ -560,21 +575,21 @@ NIL
 HORIZONTAL
 
 MONITOR
-722
-382
-841
-427
-NIL
+777
+173
+875
+218
+threat_day
 conflict_calendar
 17
 1
 11
 
 SLIDER
-722
-316
-894
-349
+936
+129
+1042
+162
 b
 b
 0
@@ -586,98 +601,98 @@ NIL
 HORIZONTAL
 
 SWITCH
-720
-195
-870
-228
+776
+47
+1040
+80
 enable_conflict
 enable_conflict
-1
-1
--1000
-
-SWITCH
-721
-250
-890
-283
-enable_reproduce
-enable_reproduce
 0
 1
 -1000
 
-MONITOR
-973
-15
-1089
-60
-NIL
-count A_citizens
-17
+SWITCH
+776
+88
+1041
+121
+enable_reproduce
+enable_reproduce
 1
-11
+1
+-1000
 
 MONITOR
-973
-95
-1086
-140
-NIL
-count B_citizens
-17
-1
-11
-
-MONITOR
-1123
-12
-1231
-57
-A_conservative
-count A_citizens with [groupism >= 0.5]
-17
-1
-11
-
-MONITOR
-1125
-94
-1230
-139
-B_conservative
-count B_citizens with [groupism >= 0.5]
-17
-1
-11
-
-MONITOR
-1270
-12
-1337
-57
-A_liberal
-count A_citizens with [groupism < 0.5]
-17
-1
-11
-
-MONITOR
-1272
-97
-1337
-142
-B_liberal
-count B_citizens with [groupism < 0.5]
-17
-1
-11
-
-MONITOR
-921
-184
-993
+777
 229
+904
+274
+current_A_citizens
+count A_citizens
+0
+1
+11
+
+MONITOR
+911
+229
+1042
+274
+current_B_citizens
+count B_citizens
+0
+1
+11
+
+MONITOR
+66
+132
+145
+177
+%_A_con
+( count A_citizens with [groupism >= 0.5] / A_number_citizens) * 100
+2
+1
+11
+
+MONITOR
+68
+368
+147
+413
+%_B_con
+( count B_citizens with [groupism >= 0.5] / B_number_citizens) * 100
+2
+1
+11
+
+MONITOR
+154
+132
+234
+177
+%_A_lib
+(count A_citizens with [groupism < 0.5] / A_number_citizens) * 100
+2
+1
+11
+
+MONITOR
+156
+369
+235
+414
+%_B_liberal
+( count B_citizens with [groupism < 0.5] / B_number_citizens) * 100
+2
+1
+11
+
+MONITOR
+779
+285
+838
+330
 NIL
 A_d_total
 17
@@ -685,10 +700,10 @@ A_d_total
 11
 
 MONITOR
-1041
-203
-1111
-248
+917
+285
+975
+330
 NIL
 B_d_total
 17
@@ -696,10 +711,10 @@ B_d_total
 11
 
 MONITOR
-1163
-413
-1235
-458
+841
+285
+899
+330
 NIL
 A_n_total
 17
@@ -707,15 +722,34 @@ A_n_total
 11
 
 MONITOR
-1271
-417
-1341
-462
+978
+285
+1036
+330
 NIL
 B_n_total
 17
 1
 11
+
+PLOT
+779
+349
+1039
+503
+population
+days
+pop change
+0.0
+100.0
+0.0
+500.0
+true
+false
+"" ""
+PENS
+"num-lib" 1.0 0 -13840069 true "" "plot count turtles with [ groupism < 0.5 ]\n"
+"num_con" 1.0 0 -2674135 true "" "plot count turtles with [ groupism >= 0.5 ]"
 
 @#$#@#$#@
 ## WHAT IS IT?
