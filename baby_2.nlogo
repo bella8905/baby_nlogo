@@ -3,7 +3,8 @@ breed [B_citizens B_citizen]
 
 turtles-own[
   groupism
-  resource
+  resource         ; total resource = resource_private + investment
+  resource_private
   investment
 ]
 globals [
@@ -53,7 +54,6 @@ to setup
     set shape "person"
     set groupism random-normal A_tough_loose 0.15 ; distribution of conservatism in migrant population
     set resource 1
-    set investment 0
   ]
 
   create-B_citizens B_number_citizens [
@@ -62,7 +62,6 @@ to setup
     set shape "person"
     set groupism random-normal B_tough_loose 0.15 ; distribution of conservatism in migrant population
     set resource 1
-    set investment 0
   ]
 
   citizens_color
@@ -160,15 +159,17 @@ to citizens_update
   ; update resource
   set A_resource 0
   ask A_citizens [
-    set resource resource +  ( 1 - groupism )
-    set investment groupism
+    set resource resource + ( 1 - groupism )
+    set investment resource * ( lerp 0 0.2 groupism )
+    set resource_private resource - investment
     set A_resource A_resource + investment
   ]
 
   set B_resource 0
   ask B_citizens [
     set resource resource + ( 1 - groupism )
-    set investment groupism
+    set investment resource * ( lerp 0 0.2 groupism )
+    set resource_private resource - investment
     set B_resource B_resource + investment
   ]
 end
@@ -220,8 +221,8 @@ to conflict
   set border_color_flipped_days_passed 0
   set border_color_flipped_times 0
 
-  set A_strength 0.01 * (sum [resource] of A_citizens) + 0.1 * A_resource
-  set B_strength 0.01 * (sum [resource] of B_citizens) + 0.1 * B_resource
+  set A_strength 0.01 * (sum [resource_private] of A_citizens) + 0.1 * A_resource
+  set B_strength 0.01 * (sum [resource_private] of B_citizens) + 0.1 * B_resource
   let A_d 0
   let B_d 0
   ifelse A_strength > B_strength [
@@ -263,11 +264,13 @@ end
 to citizens_reproduce
   let A_new_baby_count 0
   let B_new_baby_count 0
-  ask turtles with [resource > 50] [
-    set resource resource * 0.5
+  ask turtles with [resource_private > 50] [
+    set resource_private resource_private * 0.5
+    set resource resource_private + investment
     ; let resource_kid resource
     hatch 1 [
-      ; resource = resource_parent, this is true after parent's resource reduces into half
+      ; inherit resource_private from parent, and investment = 0
+      set resource resource_private
       set groupism random-float 1
       ifelse breed = A_citizens [
         set A_new_baby_count A_new_baby_count + 1
@@ -464,7 +467,7 @@ A_tough_loose
 A_tough_loose
 0
 1
-0.31
+0.25
 0.01
 1
 NIL
@@ -618,7 +621,7 @@ SWITCH
 121
 enable_reproduce
 enable_reproduce
-1
+0
 1
 -1000
 
@@ -650,7 +653,7 @@ MONITOR
 145
 177
 %_A_con
-( count A_citizens with [groupism >= 0.5] / A_number_citizens) * 100
+( count A_citizens with [groupism >= 0.5] ) / count A_citizens * 100
 2
 1
 11
@@ -661,7 +664,7 @@ MONITOR
 147
 413
 %_B_con
-( count B_citizens with [groupism >= 0.5] / B_number_citizens) * 100
+( count B_citizens with [groupism >= 0.5] ) / count B_citizens * 100
 2
 1
 11
@@ -672,7 +675,7 @@ MONITOR
 234
 177
 %_A_lib
-(count A_citizens with [groupism < 0.5] / A_number_citizens) * 100
+( count A_citizens with [groupism < 0.5] ) / count A_citizens * 100
 2
 1
 11
@@ -683,7 +686,7 @@ MONITOR
 235
 414
 %_B_liberal
-( count B_citizens with [groupism < 0.5] / B_number_citizens) * 100
+( count B_citizens with [groupism < 0.5] ) / count B_citizens * 100
 2
 1
 11
@@ -750,6 +753,25 @@ false
 PENS
 "num-lib" 1.0 0 -13840069 true "" "plot count turtles with [ groupism < 0.5 ]\n"
 "num_con" 1.0 0 -2674135 true "" "plot count turtles with [ groupism >= 0.5 ]"
+
+PLOT
+1073
+44
+1348
+227
+A society
+days
+pup change
+0.0
+200.0
+0.0
+1000.0
+true
+false
+"" ""
+PENS
+"A_lib" 1.0 0 -13840069 true "" "plot count A_citizens with [ groupism < 0.5]"
+"A_con" 1.0 0 -2674135 true "" "plot count A_citizens with [ groupism >= 0.5]"
 
 @#$#@#$#@
 ## WHAT IS IT?
