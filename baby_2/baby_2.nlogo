@@ -36,6 +36,8 @@ to-report conflict_cycle report 50 end
 to setup
   clear-all
 
+  ; print run
+
   set conflict_today false
   set days_after_conflict -1
   set conflict_calendar []
@@ -96,12 +98,7 @@ to go
 end
 
 to-report check_stop
-  if count A_citizens = 0 [
-    print (word "day " ticks ": simulation stops because A_citizens are all killed" )
-    report true
-  ]
-  if count B_citizens = 0 [
-    print (word "day " ticks ": simulation stops because B_citizens are all killed" )
+  if ticks_stop > 0 and ticks = ticks_stop  [
     report true
   ]
   report false
@@ -167,14 +164,15 @@ to citizens_update
   ]
   set A_resource A_resource_tmp
 
-  let B_
-  set B_resource 0
+  let B_resource_tmp 0
   ask B_citizens [
     set resource resource + 0.5
     set investment resource * ( lerp 0 0.2 groupism )
     set resource_private resource - investment
-    set B_resource B_resource + investment
+    set B_resource_tmp B_resource_tmp + investment
   ]
+  set B_resource B_resource_tmp
+
 end
 
 to citizens_move
@@ -217,53 +215,54 @@ to citizens_interact
 end
 
 to conflict
-  set conflict_today true
-  set days_after_conflict 0
-  set border_target_color border_color_conflict
-  set border_color_flipped_days_passed 0
-  set border_color_flipped_times 0
+  if count A_citizens > 0 and count B_citizens > 0 [
+    set conflict_today true
+    set days_after_conflict 0
+    set border_target_color border_color_conflict
+    set border_color_flipped_days_passed 0
+    set border_color_flipped_times 0
 
-  set A_strength 0.01 * (sum [resource_private] of A_citizens) + 0.1 * A_resource
-  set B_strength 0.01 * (sum [resource_private] of B_citizens) + 0.1 * B_resource
+    set A_strength 0.01 * (sum [resource_private] of A_citizens) + 0.1 * A_resource
+    set B_strength 0.01 * (sum [resource_private] of B_citizens) + 0.1 * B_resource
 
-  print (word "day " ticks ": conflicts happen! A_strength: " A_strength " B_strength: " B_strength )
+    print (word "day " ticks ": conflicts happen! A_strength: " A_strength " B_strength: " B_strength )
 
-  let A_d 0
-  let B_d 0
-  ifelse A_strength > B_strength [
-    let r A_strength / B_strength
-    ifelse r < 1.25 [
-      set A_d 0.45 * count A_citizens
-      set B_d 0.1 * count B_citizens
-    ] [
-      ifelse r >= 2 [
-        set B_d 0.5 * count B_citizens
-      ] [
-        set A_d 0.05 * count A_citizens
-        set B_d 0.25 * count B_citizens
-      ]
-    ]
-  ] [
-    if A_strength < B_strength [
-      let r B_strength / A_strength
+    let A_d 0
+    let B_d 0
+    ifelse A_strength > B_strength [
+      let r A_strength / B_strength
       ifelse r < 1.25 [
-        set B_d 0.45 * count B_citizens
-        set A_d 0.1 * count A_citizens
+        set A_d 0.45 * count A_citizens
+        set B_d 0.1 * count B_citizens
       ] [
         ifelse r >= 2 [
-          set A_d 0.5 * count A_citizens
+          set B_d 0.5 * count B_citizens
         ] [
-          set B_d 0.05 * count B_citizens
-          set A_d 0.25 * count A_citizens
+          set A_d 0.05 * count A_citizens
+          set B_d 0.25 * count B_citizens
+        ]
+      ]
+    ] [
+      if A_strength < B_strength [
+        let r B_strength / A_strength
+        ifelse r < 1.25 [
+          set B_d 0.45 * count B_citizens
+          set A_d 0.1 * count A_citizens
+        ] [
+          ifelse r >= 2 [
+            set A_d 0.5 * count A_citizens
+          ] [
+            set B_d 0.05 * count B_citizens
+            set A_d 0.25 * count A_citizens
+          ]
         ]
       ]
     ]
+
+    ; remove citizens based on A_d and B_d
+    citizens_random_kill A_citizens A_d
+    citizens_random_kill B_citizens B_d
   ]
-
-  ; remove citizens based on A_d and B_d
-  citizens_random_kill A_citizens A_d
-  citizens_random_kill B_citizens B_d
-
 end
 
 to citizens_reproduce
@@ -403,13 +402,13 @@ to-report lerp [a0 a1 s]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-285
-28
-757
-501
+292
+29
+805
+543
 -1
 -1
-14.061
+15.303030303030303
 1
 10
 1
@@ -430,10 +429,10 @@ ticks
 30.0
 
 BUTTON
-289
-514
-355
-547
+218
+467
+284
+500
 NIL
 Setup
 NIL
@@ -447,10 +446,10 @@ NIL
 1
 
 BUTTON
-383
-515
-446
-548
+218
+507
+285
+540
 NIL
 Go
 T
@@ -464,81 +463,81 @@ NIL
 1
 
 SLIDER
-47
-88
-248
-121
+50
+83
+251
+116
 A_tough_loose
 A_tough_loose
 0
 1
-0.25
+0.3
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-52
-287
-253
-320
-B_tough_loose
-B_tough_loose
-0
-1
-0.73
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
-48
-49
-248
-82
-A_number_citizens
-A_number_citizens
-0
-500
-350.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-52
-324
+53
+249
 254
-357
+282
+B_tough_loose
+B_tough_loose
+0
+1
+0.3
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+49
+44
+251
+77
+A_number_citizens
+A_number_citizens
+0
+500
+150.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+53
+286
+255
+319
 B_number_citizens
 B_number_citizens
 0
 500
-350.0
+150.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-66
-186
-144
-231
-A_resource
-A_resource
-2
-1
-11
-
-MONITOR
-67
-425
+69
+181
 147
-470
+226
+A_resource
+A_resource
+2
+1
+11
+
+MONITOR
+68
+387
+148
+432
 B_resource
 B_resource
 2
@@ -546,32 +545,32 @@ B_resource
 11
 
 MONITOR
-155
-186
-235
-231
-A_groupism
+158
+181
+238
+226
+m_A_con
 mean [groupism] of A_citizens
 2
 1
 11
 
 MONITOR
-156
-426
-235
-471
-B_groupism
+157
+388
+236
+433
+m_B_com
 mean [groupism] of B_citizens
 2
 1
 11
 
 SLIDER
-777
-129
-930
-162
+819
+112
+911
+145
 conflict_count_per_cycle
 conflict_count_per_cycle
 0
@@ -583,36 +582,36 @@ NIL
 HORIZONTAL
 
 MONITOR
-777
-173
-875
-218
-threat_day
+819
+152
+1008
+197
+threat_calendar
 conflict_calendar
 17
 1
 11
 
 SLIDER
-936
-129
-1042
-162
+915
+112
+1007
+145
 b
 b
 0
 1
-0.17
+0.23
 0.01
 1
 NIL
 HORIZONTAL
 
 SWITCH
-776
-47
-1040
-80
+819
+31
+1007
+64
 enable_conflict
 enable_conflict
 0
@@ -620,21 +619,21 @@ enable_conflict
 -1000
 
 SWITCH
-776
-88
-1041
-121
+819
+71
+1007
+104
 enable_reproduce
 enable_reproduce
-1
+0
 1
 -1000
 
 MONITOR
-777
-229
-904
-274
+1082
+216
+1204
+261
 current_A_citizens
 count A_citizens
 0
@@ -642,10 +641,10 @@ count A_citizens
 11
 
 MONITOR
-911
-229
-1042
-274
+1085
+382
+1205
+427
 current_B_citizens
 count B_citizens
 0
@@ -653,10 +652,10 @@ count B_citizens
 11
 
 MONITOR
-66
-132
-145
-177
+69
+127
+148
+172
 %_A_con
 ( count A_citizens with [groupism >= 0.5] ) / count A_citizens * 100
 2
@@ -664,10 +663,10 @@ MONITOR
 11
 
 MONITOR
-68
-368
-147
-413
+69
+330
+148
+375
 %_B_con
 ( count B_citizens with [groupism >= 0.5] ) / count B_citizens * 100
 2
@@ -675,10 +674,10 @@ MONITOR
 11
 
 MONITOR
-154
-132
-234
-177
+157
+127
+237
+172
 %_A_lib
 ( count A_citizens with [groupism < 0.5] ) / count A_citizens * 100
 2
@@ -686,10 +685,10 @@ MONITOR
 11
 
 MONITOR
-156
-369
-235
-414
+157
+331
+236
+376
 %_B_liberal
 ( count B_citizens with [groupism < 0.5] ) / count B_citizens * 100
 2
@@ -697,10 +696,10 @@ MONITOR
 11
 
 MONITOR
-779
-285
-838
-330
+1083
+266
+1142
+311
 NIL
 A_d_total
 17
@@ -708,10 +707,10 @@ A_d_total
 11
 
 MONITOR
-917
-285
-975
-330
+1086
+433
+1144
+478
 NIL
 B_d_total
 17
@@ -719,10 +718,10 @@ B_d_total
 11
 
 MONITOR
-841
-285
-899
-330
+1145
+266
+1203
+311
 NIL
 A_n_total
 17
@@ -730,10 +729,10 @@ A_n_total
 11
 
 MONITOR
-978
-285
-1036
-330
+1147
+433
+1205
+478
 NIL
 B_n_total
 17
@@ -741,42 +740,83 @@ B_n_total
 11
 
 PLOT
-779
-349
-1039
-503
-population
-days
-pop change
+819
+216
+1071
+372
+A Society
+time
+suviving rate
 0.0
-100.0
+10.0
 0.0
-500.0
+1.0
 true
 false
 "" ""
 PENS
-"num-lib" 1.0 0 -13840069 true "" "plot count turtles with [ groupism < 0.5 ]\n"
-"num_con" 1.0 0 -2674135 true "" "plot count turtles with [ groupism >= 0.5 ]"
+"A_lib" 1.0 0 -13840069 true "" "plot count ( A_citizens with [ groupism < 0.5 ] ) / count A_citizens\n"
+"B_con" 1.0 0 -2674135 true "" "plot count ( A_citizens with [ groupism >= 0.5 ] ) / count A_citizens\n"
 
 PLOT
+820
+382
 1073
-44
-1348
-227
-A society
-days
-pup change
+543
+B Society
+time
+suviving rate
 0.0
-200.0
+10.0
 0.0
-1000.0
+1.0
 true
 false
 "" ""
 PENS
-"A_lib" 1.0 0 -13840069 true "" "plot count A_citizens with [ groupism < 0.5]"
-"A_con" 1.0 0 -2674135 true "" "plot count A_citizens with [ groupism >= 0.5]"
+"B_lib" 1.0 0 -13840069 true "" "plot count ( B_citizens with [ groupism < 0.5 ] ) / count B_citizens"
+"B_con" 1.0 0 -2674135 true "" "plot count ( B_citizens with [ groupism >= 0.5 ] ) / count B_citizens"
+
+MONITOR
+1262
+31
+1383
+76
+global conservatism
+sum [ groupism >= 0.5 ] of turtles
+2
+1
+11
+
+PLOT
+1019
+31
+1246
+196
+global environment
+time
+suviving rate
+0.0
+10.0
+0.0
+1.0
+true
+false
+"" ""
+PENS
+"num-lib" 1.0 0 -13840069 true "" "plot count ( turtles with [ groupism < 0.5 ] ) / count turtles\n"
+"num_con" 1.0 0 -2674135 true "" "plot count ( turtles with [ groupism >= 0.5 ] ) / count turtles"
+
+INPUTBOX
+215
+554
+364
+614
+ticks_stop
+300.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -1124,6 +1164,88 @@ NetLogo 6.2.2
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>count turtles</metric>
+    <enumeratedValueSet variable="ticks_stop">
+      <value value="300"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="enable_conflict">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="A_number_citizens">
+      <value value="150"/>
+      <value value="250"/>
+      <value value="350"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="conflict_count_per_cycle">
+      <value value="0"/>
+      <value value="2"/>
+      <value value="4"/>
+      <value value="6"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="enable_reproduce">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="A_tough_loose">
+      <value value="0.3"/>
+      <value value="0.5"/>
+      <value value="0.7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="b">
+      <value value="0.23"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="B_tough_loose">
+      <value value="0.3"/>
+      <value value="0.5"/>
+      <value value="0.7"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="B_number_citizens">
+      <value value="150"/>
+      <value value="250"/>
+      <value value="350"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="experiment_test" repetitions="1" runMetricsEveryStep="true">
+    <setup>setup</setup>
+    <go>go</go>
+    <exitCondition>check_stop</exitCondition>
+    <metric>count A_citizens</metric>
+    <metric>count B_citizens</metric>
+    <enumeratedValueSet variable="ticks_stop">
+      <value value="300"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="enable_conflict">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="A_number_citizens">
+      <value value="150"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="conflict_count_per_cycle">
+      <value value="2"/>
+      <value value="4"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="enable_reproduce">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="A_tough_loose">
+      <value value="0.3"/>
+      <value value="0.5"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="b">
+      <value value="0.23"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="B_tough_loose">
+      <value value="0.3"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="B_number_citizens">
+      <value value="150"/>
+      <value value="250"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
